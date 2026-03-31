@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snakes & Ladders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #1a0a2e;
+            --surface: #261245;
+            --surface2: #341a5c;
+            --gold: #ffd700;
+            --gold2: #ffaa00;
+            --teal: #00e5c3;
+            --coral: #ff6b6b;
+            --purple: #b06cff;
+            --green: #4ade80;
+            --text: #f0e6ff;
+            --muted: #9b7ec8;
+            --snake-color: #ff4757;
+            --ladder-color: #2ed573;
+            --cell-light: #2d1457;
+            --cell-dark: #1f0e3d;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(176, 108, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 229, 195, 0.1) 0%, transparent 50%);
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            background: linear-gradient(135deg, var(--gold), var(--purple), var(--teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-shadow: none;
+            filter: drop-shadow(0 0 20px rgba(176, 108, 255, 0.4));
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* BOARD */
+        .board-wrap {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        canvas#board {
+            border-radius: 16px;
+            box-shadow: var(--shadow), 0 0 60px rgba(176, 108, 255, 0.2);
+            display: block;
+        }
+
+        /* SIDE PANEL */
+        .side-panel {
+            flex: 1;
+            min-width: 260px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 18px 20px;
+            border: 1px solid rgba(176, 108, 255, 0.2);
+            box-shadow: var(--shadow);
+        }
+
+        .panel-card h3 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem;
+            color: var(--gold);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        /* PLAYERS */
+        .player-entry {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: var(--surface2);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .player-entry.active-player {
+            border-color: var(--gold);
+            background: rgba(255, 215, 0, 0.08);
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+        }
+
+        .player-token {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .player-pos {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .turn-badge {
+            font-size: 0.7rem;
+            background: var(--gold);
+            color: #1a0a2e;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* DICE */
+        .dice-section {
+            text-align: center;
+        }
+
+        .dice-display {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 16px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: transform 0.1s;
+            user-select: none;
+        }
+
+        .dice-display:hover {
+            transform: scale(1.05);
+        }
+
+        .dice-display.rolling {
+            animation: roll 0.4s ease;
+        }
+
+        @keyframes roll {
+
+            0%,
+            100% {
+                transform: rotate(0);
+            }
+
+            25% {
+                transform: rotate(-15deg) scale(1.1);
+            }
+
+            75% {
+                transform: rotate(15deg) scale(1.1);
+            }
+        }
+
+        .roll-btn {
+            display: inline-block;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, var(--purple), var(--teal));
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 20px rgba(176, 108, 255, 0.4);
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .roll-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(176, 108, 255, 0.5);
+        }
+
+        .roll-btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        .roll-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* LOG */
+        .log-box {
+            max-height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--purple) transparent;
+        }
+
+        .log-entry {
+            font-size: 0.82rem;
+            padding: 5px 10px;
+            border-radius: 6px;
+            background: var(--surface2);
+            line-height: 1.4;
+            border-left: 3px solid var(--purple);
+        }
+
+        .log-entry.snake-log {
+            border-left-color: var(--snake-color);
+        }
+
+        .log-entry.ladder-log {
+            border-left-color: var(--ladder-color);
+        }
+
+        .log-entry.win-log {
+            border-left-color: var(--gold);
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        /* LEGEND */
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.83rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* NUM PLAYERS */
+        .num-players-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .np-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--purple);
+            background: transparent;
+            color: var(--text);
+            font-family: 'Fredoka One', cursive;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .np-btn.active {
+            background: var(--purple);
+            border-color: var(--purple);
+        }
+
+        .np-btn:hover:not(.active) {
+            background: rgba(176, 108, 255, 0.2);
+        }
+
+        .restart-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 2px solid var(--coral);
+            color: var(--coral);
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .restart-btn:hover {
+            background: rgba(255, 107, 107, 0.15);
+        }
+
+        /* WIN OVERLAY */
+        #win-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 4, 20, 0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #win-overlay.show {
+            display: flex;
+        }
+
+        .win-card {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 48px 56px;
+            text-align: center;
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.3), var(--shadow);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .win-emoji {
+            font-size: 4rem;
+            margin-bottom: 12px;
+        }
+
+        .win-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+
+        .win-sub {
+            color: var(--muted);
+            margin-bottom: 28px;
+            font-size: 1rem;
+        }
+
+        .win-play-again {
+            padding: 14px 40px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            color: #1a0a2e;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+            transition: all 0.2s;
+        }
+
+        .win-play-again:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 700px) {
+            .game-container {
+                gap: 16px;
+            }
+
+            .side-panel {
+                min-width: 100%;
+                max-width: 100%;
+            }
+
+            .win-card {
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🎲 Snakes & Ladders</h1>
+    <p class="subtitle">A Classic Board Game</p>
+
+    <div class="game-container">
+        <div class="board-wrap">
+            <canvas id="board" width="520" height="520"></canvas>
+        </div>
+
+        <div class="side-panel">
+            <!-- Setup -->
+            <div class="panel-card">
+                <h3>⚙️ Players</h3>
+                <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">Select number of players:</p>
+                <div class="num-players-row">
+                    <button class="np-btn active" data-n="2">2</button>
+                    <button class="np-btn" data-n="3">3</button>
+                    <button class="np-btn" data-n="4">4</button>
+                </div>
+                <button class="restart-btn" onclick="startGame()">🔄 New Game</button>
+            </div>
+
+            <!-- Players status -->
+            <div class="panel-card">
+                <h3>🏆 Scoreboard</h3>
+                <div id="players-list"></div>
+            </div>
+
+            <!-- Dice -->
+            <div class="panel-card dice-section">
+                <h3>🎲 Roll Dice</h3>
+                <div class="dice-display" id="dice-face" onclick="rollDice()">🎲</div>
+                <button class="roll-btn" id="roll-btn" onclick="rollDice()">Roll!</button>
+            </div>
+
+            <!-- Log -->
+            <div class="panel-card">
+                <h3>📜 Game Log</h3>
+                <div class="log-box" id="log-box"></div>
+            </div>
+
+            <!-- Legend -->
+            <div class="panel-card">
+                <h3>📋 Legend</h3>
+                <div class="legend-row">
+                    <div class="legend-dot" style="background:var(--snake-color)"></div>Snake — slide down
+                </div>
+                <div class="legend-row">
+                    <div class="legend-dot" style="background:var(--ladder-color)"></div>Ladder — climb up
+                </div>
+                <div class="legend-row" style="font-size:0.75rem;color:var(--muted);margin-top:4px;">First to reach
+                    square 100 wins!</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="win-overlay">
+        <div class="win-card">
+            <div class="win-emoji">🎉</div>
+            <div class="win-title" id="win-title">Player 1 Wins!</div>
+            <div class="win-sub">Congratulations on reaching square 100!</div>
+            <button class="win-play-again"
+                onclick="startGame(); document.getElementById('win-overlay').classList.remove('show')">Play
+                Again</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== GAME DATA ==========
+        const SNAKES = {
+            99: 5, 94: 31, 87: 24, 73: 12, 64: 60, 52: 29, 48: 9, 26: 6, 17: 3
+        };
+        const LADDERS = {
+            4: 56, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92, 85: 95
+        };
+
+        const PLAYER_CONFIGS = [
+            { emoji: '🔴', color: '#ff6b6b', name: 'Player 1' },
+            { emoji: '🔵', color: '#74b9ff', name: 'Player 2' },
+            { emoji: '🟢', color: '#4ade80', name: 'Player 3' },
+            { emoji: '🟡', color: '#ffd700', name: 'Player 4' },
+        ];
+
+        const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+        let numPlayers = 2;
+        let players = [];
+        let currentPlayer = 0;
+        let rolling = false;
+        let gameOver = false;
+
+        // ========== BOARD DRAWING ==========
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const SIZE = 520;
+        const CELL = SIZE / 10;
+
+        function cellToXY(n) {
+            // n is 1-100
+            const idx = n - 1;
+            const row = Math.floor(idx / 10); // 0 = bottom
+            const col = idx % 10;
+            const screenRow = 9 - row;
+            const screenCol = (row % 2 === 0) ? col : 9 - col;
+            return {
+                x: screenCol * CELL + CELL / 2,
+                y: screenRow * CELL + CELL / 2
+            };
+        }
+
+        function drawBoard() {
+            // Background
+            ctx.fillStyle = '#1a0a2e';
+            ctx.fillRect(0, 0, SIZE, SIZE);
+
+            // Cells
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 10; j++) {
+                    const cellNum = getCellNum(i, j);
+                    const isLight = (i + j) % 2 === 0;
+                    ctx.fillStyle = isLight ? '#2d1457' : '#1f0e3d';
+                    roundRect(ctx, j * CELL + 1, i * CELL + 1, CELL - 2, CELL - 2, 4);
+                    ctx.fill();
+
+                    // Number
+                    ctx.fillStyle = 'rgba(150,120,200,0.6)';
+                    ctx.font = `bold ${CELL * 0.22}px Nunito, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(cellNum, j * CELL + CELL / 2, i * CELL + CELL * 0.82);
+                }
+            }
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(176,108,255,0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, SIZE); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(SIZE, i * CELL); ctx.stroke();
+            }
+
+            // Draw snakes
+            drawSnakesAndLadders();
+
+            // Draw players
+            drawPlayers();
+        }
+
+        function getCellNum(screenRow, screenCol) {
+            const row = 9 - screenRow;
+            if (row % 2 === 0) return row * 10 + screenCol + 1;
+            return row * 10 + (9 - screenCol) + 1;
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function drawSnakesAndLadders() {
+            // Ladders
+            for (const [from, to] of Object.entries(LADDERS)) {
+                const a = cellToXY(parseInt(from));
+                const b = cellToXY(parseInt(to));
+                drawLadder(a.x, a.y, b.x, b.y);
+            }
+            // Snakes
+            for (const [from, to] of Object.entries(SNAKES)) {
+                const a = cellToXY(parseInt(from));
+                const b = cellToXY(parseInt(to));
+                drawSnake(a.x, a.y, b.x, b.y);
+            }
+        }
+
+        function drawLadder(x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const nx = -dy / len * 8, ny = dx / len * 8;
+
+            // Rails
+            ctx.strokeStyle = '#2ed573';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.globalAlpha = 0.85;
+
+            ctx.beginPath();
+            ctx.moveTo(x1 + nx, y1 + ny); ctx.lineTo(x2 + nx, y2 + ny); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x1 - nx, y1 - ny); ctx.lineTo(x2 - nx, y2 - ny); ctx.stroke();
+
+            // Rungs
+            const steps = Math.floor(len / 24);
+            ctx.strokeStyle = '#a8ff78';
+            ctx.lineWidth = 3;
+            for (let i = 1; i < steps; i++) {
+                const t = i / steps;
+                const cx = x1 + dx * t, cy = y1 + dy * t;
+                ctx.beginPath();
+                ctx.moveTo(cx + nx, cy + ny); ctx.lineTo(cx - nx, cy - ny); ctx.stroke();
+            }
+
+            // Arrow head
+            ctx.fillStyle = '#2ed573';
+            ctx.beginPath();
+            ctx.arc(x2, y2, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 1;
+        }
+
+        function drawSnake(x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const segments = Math.max(4, Math.floor(len / 30));
+
+            ctx.strokeStyle = '#ff4757';
+            ctx.lineWidth = 7;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.globalAlpha = 0.9;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+
+            for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                const mx = x1 + dx * t;
+                const my = y1 + dy * t;
+                const wave = Math.sin(t * Math.PI * 3) * 16;
+                const nx = -dy / len, ny = dx / len;
+                ctx.lineTo(mx + nx * wave, my + ny * wave);
+            }
+            ctx.stroke();
+
+            // Snake outline
+            ctx.strokeStyle = '#ff6b81';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                const mx = x1 + dx * t, my = y1 + dy * t;
+                const wave = Math.sin(t * Math.PI * 3) * 16;
+                const nx = -dy / len, ny = dx / len;
+                ctx.lineTo(mx + nx * wave, my + ny * wave);
+            }
+            ctx.stroke();
+
+            // Head circle
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#ff4757';
+            ctx.beginPath(); ctx.arc(x1, y1, 9, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(x1 - 3, y1 - 3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x1 + 3, y1 - 3, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a0a2e';
+            ctx.beginPath(); ctx.arc(x1 - 3, y1 - 3, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x1 + 3, y1 - 3, 1.5, 0, Math.PI * 2); ctx.fill();
+
+            // Tail
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI * 2); ctx.fill();
+
+            ctx.globalAlpha = 1;
+        }
+
+        function drawPlayers() {
+            // Group players by position
+            const groups = {};
+            players.forEach((p, i) => {
+                if (!groups[p.pos]) groups[p.pos] = [];
+                groups[p.pos].push({ ...p, idx: i });
+            });
+
+            for (const [pos, group] of Object.entries(groups)) {
+                const { x, y } = cellToXY(parseInt(pos));
+                const n = group.length;
+                group.forEach((p, gi) => {
+                    const ox = n > 1 ? (gi - (n - 1) / 2) * 14 : 0;
+                    const oy = n > 2 ? (Math.floor(gi / 2) - 0.25) * 12 : 0;
+                    drawToken(x + ox, y + oy - 8, p.color, p.emoji, p.idx === currentPlayer);
+                });
+            }
+        }
+
+        function drawToken(x, y, color, emoji, isActive) {
+            // Glow
+            if (isActive) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 16;
+            }
+
+            // Circle bg
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+
+            // Emoji
+            ctx.font = '14px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, x, y + 1);
+        }
+
+        // ========== GAME LOGIC ==========
+        function startGame() {
+            players = PLAYER_CONFIGS.slice(0, numPlayers).map(cfg => ({
+                ...cfg,
+                pos: 0
+            }));
+            currentPlayer = 0;
+            gameOver = false;
+            document.getElementById('log-box').innerHTML = '';
+            document.getElementById('dice-face').textContent = '🎲';
+            document.getElementById('roll-btn').disabled = false;
+            updatePlayersUI();
+            drawBoard();
+            addLog(`Game started! ${players[0].name}'s turn.`, '');
+        }
+
+        function rollDice() {
+            if (rolling || gameOver) return;
+            rolling = true;
+            document.getElementById('roll-btn').disabled = true;
+
+            const dice = document.getElementById('dice-face');
+            dice.classList.add('rolling');
+
+            let count = 0;
+            const interval = setInterval(() => {
+                dice.textContent = DICE_FACES[Math.floor(Math.random() * 6)];
+                count++;
+                if (count >= 8) {
+                    clearInterval(interval);
+                    dice.classList.remove('rolling');
+                    const roll = Math.floor(Math.random() * 6) + 1;
+                    dice.textContent = DICE_FACES[roll - 1];
+                    processMove(roll);
+                }
+            }, 60);
+        }
+
+        function processMove(roll) {
+            const p = players[currentPlayer];
+            const oldPos = p.pos;
+            let newPos = p.pos + roll;
+
+            addLog(`${p.emoji} ${p.name} rolled ${roll} (${oldPos === 0 ? 'start' : oldPos} → ${newPos > 100 ? '✗ need exact' : newPos})`, '');
+
+            if (newPos > 100) {
+                addLog(`Need exact roll to reach 100. Stay at ${oldPos}.`, '');
+                endTurn();
+                return;
+            }
+
+            p.pos = newPos;
+
+            // Check snake
+            if (SNAKES[newPos]) {
+                const snakeTo = SNAKES[newPos];
+                setTimeout(() => {
+                    addLog(`🐍 Oh no! Snake at ${newPos} → slides to ${snakeTo}!`, 'snake-log');
+                    p.pos = snakeTo;
+                    updatePlayersUI();
+                    drawBoard();
+                    checkWin(p);
+                }, 500);
+            }
+            // Check ladder
+            else if (LADDERS[newPos]) {
+                const ladderTo = LADDERS[newPos];
+                setTimeout(() => {
+                    addLog(`🪜 Lucky! Ladder at ${newPos} → climbs to ${ladderTo}!`, 'ladder-log');
+                    p.pos = ladderTo;
+                    updatePlayersUI();
+                    drawBoard();
+                    checkWin(p);
+                }, 500);
+            }
+            else {
+                updatePlayersUI();
+                drawBoard();
+                checkWin(p);
+            }
+        }
+
+        function checkWin(p) {
+            if (p.pos === 100) {
+                gameOver = true;
+                document.getElementById('win-title').textContent = `${p.emoji} ${p.name} Wins!`;
+                addLog(`🎉 ${p.name} reached 100 and won the game!`, 'win-log');
+                setTimeout(() => {
+                    document.getElementById('win-overlay').classList.add('show');
+                }, 600);
+                return;
+            }
+            endTurn();
+        }
+
+        function endTurn() {
+            currentPlayer = (currentPlayer + 1) % numPlayers;
+            rolling = false;
+            document.getElementById('roll-btn').disabled = false;
+            updatePlayersUI();
+            drawBoard();
+            addLog(`${players[currentPlayer].emoji} ${players[currentPlayer].name}'s turn!`, '');
+        }
+
+        function addLog(msg, cls) {
+            const box = document.getElementById('log-box');
+            const el = document.createElement('div');
+            el.className = `log-entry ${cls}`;
+            el.textContent = msg;
+            box.prepend(el);
+            if (box.children.length > 30) box.lastChild.remove();
+        }
+
+        function updatePlayersUI() {
+            const list = document.getElementById('players-list');
+            list.innerHTML = '';
+            players.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = `player-entry${i === currentPlayer ? ' active-player' : ''}`;
+                div.innerHTML = `
+      <div class="player-token" style="background:${p.color}20;border:2px solid ${p.color}">${p.emoji}</div>
+      <div class="player-info">
+        <div class="player-name">${p.name}</div>
+        <div class="player-pos">Square: ${p.pos === 0 ? 'Start' : p.pos}</div>
+      </div>
+      ${i === currentPlayer ? '<span class="turn-badge">YOUR TURN</span>' : ''}
+    `;
+                list.appendChild(div);
+            });
+        }
+
+        // Number of players buttons
+        document.querySelectorAll('.np-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.np-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                numPlayers = parseInt(btn.dataset.n);
+                startGame();
+            });
+        });
+
+        // Keyboard roll
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                rollDice();
+            }
+        });
+
+        // Start!
+        startGame();
+    </script>
+</body>
+
+</html>
