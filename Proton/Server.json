@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "my-design-prompts": {
+      "command": "python",
+      "args": ["D:/Studies/n8n/MCP/server/prompt.py"]
+    }
+  }
+}
+
