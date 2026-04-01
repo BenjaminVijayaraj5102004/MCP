@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake and Ladder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+            gap: 2px;
+            background: #2d3436;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 5px;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .cell.light {
+            background: linear-gradient(145deg, #dfe6e9, #b2bec3);
+            color: #2d3436;
+        }
+
+        .cell.dark {
+            background: linear-gradient(145deg, #74b9ff, #0984e3);
+            color: white;
+        }
+
+        .cell.snake-head {
+            background: linear-gradient(145deg, #ff7675, #d63031) !important;
+        }
+
+        .cell.snake-tail {
+            background: linear-gradient(145deg, #fab1a0, #e17055) !important;
+        }
+
+        .cell.ladder-bottom {
+            background: linear-gradient(145deg, #55efc4, #00b894) !important;
+        }
+
+        .cell.ladder-top {
+            background: linear-gradient(145deg, #81ecec, #00cec9) !important;
+        }
+
+        .player {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .player1 {
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #c0392b);
+            box-shadow: 0 0 10px #ff6b6b;
+        }
+
+        .player2 {
+            background: radial-gradient(circle at 30% 30%, #4ecdc4, #1abc9c);
+            box-shadow: 0 0 10px #4ecdc4;
+        }
+
+        .player1.offset {
+            transform: translate(-12px, -12px);
+        }
+
+        .player2.offset {
+            transform: translate(12px, 12px);
+        }
+
+        .panel {
+            background: linear-gradient(145deg, #2d3436, #1e272e);
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+            min-width: 280px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .player-card {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+
+        .player-card.p1 {
+            background: linear-gradient(145deg, #c0392b, #e74c3c);
+        }
+
+        .player-card.p2 {
+            background: linear-gradient(145deg, #1abc9c, #16a085);
+        }
+
+        .player-card.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .player-card h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .player-card .position {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .dice-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 15px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            font-weight: bold;
+            color: #2d3436;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .dice:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .dice.rolling {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            25% {
+                transform: rotate(-20deg) scale(1.1);
+            }
+
+            75% {
+                transform: rotate(20deg) scale(1.1);
+            }
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-top: 15px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message.snake {
+            background: linear-gradient(145deg, rgba(214, 48, 49, 0.3), rgba(214, 48, 49, 0.1));
+            border: 1px solid #d63031;
+        }
+
+        .message.ladder {
+            background: linear-gradient(145deg, rgba(0, 184, 148, 0.3), rgba(0, 184, 148, 0.1));
+            border: 1px solid #00b894;
+        }
+
+        .message.win {
+            background: linear-gradient(145deg, rgba(253, 203, 110, 0.3), rgba(253, 203, 110, 0.1));
+            border: 1px solid #fdcb6e;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-restart {
+            background: linear-gradient(145deg, #6c5ce7, #a55eea);
+            color: white;
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .legend-color.snake {
+            background: linear-gradient(145deg, #ff7675, #d63031);
+        }
+
+        .legend-color.ladder {
+            background: linear-gradient(145deg, #55efc4, #00b894);
+        }
+
+        .instructions {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="board" id="board"></div>
+        <div class="panel">
+            <h1>🎲 Snake & Ladder 🐍</h1>
+
+            <div class="player-info">
+                <div class="player-card p1 active" id="p1-card">
+                    <h3>🔴 Player 1</h3>
+                    <div class="position" id="p1-pos">0</div>
+                </div>
+                <div class="player-card p2" id="p2-card">
+                    <h3>🟢 Player 2</h3>
+                    <div class="position" id="p2-pos">0</div>
+                </div>
+            </div>
+
+            <div class="dice-container">
+                <div class="dice" id="dice" onclick="rollDice()">🎲</div>
+            </div>
+
+            <p class="instructions">Click the dice to roll!</p>
+
+            <div class="message" id="message">Player 1's turn</div>
+
+            <button class="btn btn-restart" onclick="restartGame()">🔄 Restart Game</button>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color snake"></div>
+                    <span>Snake (Go down!)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color ladder"></div>
+                    <span>Ladder (Go up!)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Snakes: head -> tail (go down)
+        const snakes = {
+            99: 54,
+            95: 75,
+            92: 88,
+            89: 68,
+            74: 53,
+            64: 60,
+            62: 19,
+            49: 11,
+            46: 25,
+            16: 6
+        };
+
+        // Ladders: bottom -> top (go up)
+        const ladders = {
+            2: 38,
+            7: 14,
+            8: 31,
+            15: 26,
+            21: 42,
+            28: 84,
+            36: 44,
+            51: 67,
+            71: 91,
+            78: 98,
+            87: 94
+        };
+
+        let players = [
+            { position: 0, element: null },
+            { position: 0, element: null }
+        ];
+        let currentPlayer = 0;
+        let gameOver = false;
+        let isRolling = false;
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            // Create cells in snake-ladder order (bottom-left to top-right, alternating)
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+
+                    // Calculate actual position number
+                    let num;
+                    if (row % 2 === 0) {
+                        num = 100 - (row * 10) - col;
+                    } else {
+                        num = 100 - (row * 10) - (9 - col);
+                    }
+
+                    cell.textContent = num;
+                    cell.dataset.num = num;
+                    cell.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
+
+                    // Mark snakes and ladders
+                    if (snakes[num]) {
+                        cell.classList.add('snake-head');
+                        cell.title = `Snake! Go to ${snakes[num]}`;
+                    }
+                    if (Object.values(snakes).includes(num)) {
+                        cell.classList.add('snake-tail');
+                    }
+                    if (ladders[num]) {
+                        cell.classList.add('ladder-bottom');
+                        cell.title = `Ladder! Go to ${ladders[num]}`;
+                    }
+                    if (Object.values(ladders).includes(num)) {
+                        cell.classList.add('ladder-top');
+                    }
+
+                    board.appendChild(cell);
+                }
+            }
+
+            // Create player tokens
+            players[0].element = createPlayerToken('player1');
+            players[1].element = createPlayerToken('player2');
+
+            updatePlayerPositions();
+        }
+
+        function createPlayerToken(className) {
+            const token = document.createElement('div');
+            token.classList.add('player', className);
+            return token;
+        }
+
+        function getCellByNumber(num) {
+            return document.querySelector(`.cell[data-num="${num}"]`);
+        }
+
+        function updatePlayerPositions() {
+            // Remove existing tokens
+            document.querySelectorAll('.player').forEach(p => p.remove());
+
+            players.forEach((player, index) => {
+                if (player.position > 0) {
+                    const cell = getCellByNumber(player.position);
+                    if (cell) {
+                        const token = createPlayerToken(`player${index + 1}`);
+
+                        // Offset if both players on same cell
+                        if (players[0].position === players[1].position && players[0].position > 0) {
+                            token.classList.add('offset');
+                        }
+
+                        cell.appendChild(token);
+                    }
+                }
+            });
+
+            // Update position displays
+            document.getElementById('p1-pos').textContent = players[0].position;
+            document.getElementById('p2-pos').textContent = players[1].position;
+        }
+
+        function rollDice() {
+            if (gameOver || isRolling) return;
+
+            isRolling = true;
+            const dice = document.getElementById('dice');
+            dice.classList.add('rolling');
+
+            // Animate dice roll
+            let rollCount = 0;
+            const rollInterval = setInterval(() => {
+                dice.textContent = Math.floor(Math.random() * 6) + 1;
+                rollCount++;
+                if (rollCount > 10) {
+                    clearInterval(rollInterval);
+                    const finalRoll = Math.floor(Math.random() * 6) + 1;
+                    dice.textContent = finalRoll;
+                    dice.classList.remove('rolling');
+                    movePlayer(finalRoll);
+                    isRolling = false;
+                }
+            }, 100);
+        }
+
+        function movePlayer(steps) {
+            const player = players[currentPlayer];
+            let newPosition = player.position + steps;
+            const message = document.getElementById('message');
+
+            // Can't go beyond 100
+            if (newPosition > 100) {
+                message.textContent = `Need exactly ${100 - player.position} to win! Turn passes.`;
+                message.className = 'message';
+                switchPlayer();
+                return;
+            }
+
+            player.position = newPosition;
+            updatePlayerPositions();
+
+            // Check for win
+            if (newPosition === 100) {
+                gameOver = true;
+                message.textContent = `🎉 Player ${currentPlayer + 1} WINS! 🎉`;
+                message.className = 'message win';
+                return;
+            }
+
+            // Check for snake
+            if (snakes[newPosition]) {
+                setTimeout(() => {
+                    message.textContent = `🐍 Oops! Snake bite! Sliding down to ${snakes[newPosition]}`;
+                    message.className = 'message snake';
+                    player.position = snakes[newPosition];
+                    updatePlayerPositions();
+                    switchPlayer();
+                }, 500);
+                return;
+            }
+
+            // Check for ladder
+            if (ladders[newPosition]) {
+                setTimeout(() => {
+                    message.textContent = `🪜 Yay! Ladder! Climbing up to ${ladders[newPosition]}`;
+                    message.className = 'message ladder';
+                    player.position = ladders[newPosition];
+                    updatePlayerPositions();
+                    switchPlayer();
+                }, 500);
+                return;
+            }
+
+            message.textContent = `Player ${currentPlayer + 1} moved to ${newPosition}`;
+            message.className = 'message';
+            switchPlayer();
+        }
+
+        function switchPlayer() {
+            setTimeout(() => {
+                if (!gameOver) {
+                    currentPlayer = 1 - currentPlayer;
+                    document.getElementById('p1-card').classList.toggle('active', currentPlayer === 0);
+                    document.getElementById('p2-card').classList.toggle('active', currentPlayer === 1);
+                    document.getElementById('message').textContent = `Player ${currentPlayer + 1}'s turn`;
+                }
+            }, 1000);
+        }
+
+        function restartGame() {
+            players[0].position = 0;
+            players[1].position = 0;
+            currentPlayer = 0;
+            gameOver = false;
+            isRolling = false;
+
+            document.getElementById('dice').textContent = '🎲';
+            document.getElementById('p1-card').classList.add('active');
+            document.getElementById('p2-card').classList.remove('active');
+            document.getElementById('message').textContent = "Player 1's turn";
+            document.getElementById('message').className = 'message';
+
+            updatePlayerPositions();
+        }
+
+        // Initialize game
+        initBoard();
+    </script>
+</body>
+
+</html>

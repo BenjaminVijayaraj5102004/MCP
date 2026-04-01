@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benjamin Vijayaraj — Portfolio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --accent: #00ff88;
+    --accent2: #ff6b35;
+    --text: #e8e8f0;
+    --muted: #555570;
+    --panel: rgba(10,10,20,0.92);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    cursor: none;
+  }
+
+  #canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* Custom cursor */
+  #cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, background 0.2s;
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: all 0.15s ease;
+    opacity: 0.6;
+  }
+
+  /* Loader */
+  #loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    transition: opacity 0.8s ease;
+  }
+  #loader h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 8vw, 100px);
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(0,255,136,0.4);
+  }
+  #loader p {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .loader-bar-wrap {
+    width: 280px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #loader-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease;
+    border-radius: 2px;
+  }
+
+  /* UI Overlay */
+  #ui {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Header */
+  #header {
+    position: fixed;
+    top: 28px; left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    transition: opacity 1s ease 1s;
+  }
+  #header .name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,255,136,0.3);
+  }
+  #header .dot {
+    width: 6px; height: 6px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+  /* Controls hint */
+  #controls-hint {
+    position: fixed;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 1s ease 1.5s;
+    pointer-events: none;
+  }
+  .key {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .key-btn {
+    width: 36px; height: 36px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(8px);
+  }
+  .key-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .key-arrow { display: flex; gap: 4px; }
+
+  /* Info panels */
+  .info-panel {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 12px;
+    padding: 24px 28px;
+    backdrop-filter: blur(20px);
+    max-width: 340px;
+    pointer-events: all;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    box-shadow: 0 0 40px rgba(0,255,136,0.05), 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .info-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .info-panel h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .info-panel .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .info-panel p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(232,232,240,0.75);
+  }
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .tag {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .tag-green { background: rgba(0,255,136,0.1); color: var(--accent); border: 1px solid rgba(0,255,136,0.2); }
+  .tag-orange { background: rgba(255,107,53,0.1); color: var(--accent2); border: 1px solid rgba(255,107,53,0.2); }
+  .tag-blue { background: rgba(100,160,255,0.1); color: #64a0ff; border: 1px solid rgba(100,160,255,0.2); }
+
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 10px 18px;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    pointer-events: all;
+  }
+  .link-btn:hover {
+    background: rgba(0,255,136,0.2);
+    box-shadow: 0 0 20px rgba(0,255,136,0.15);
+  }
+  .link-btn svg { width: 14px; height: 14px; }
+
+  #panel-about { top: 28px; right: 40px; }
+  #panel-skills { bottom: 100px; right: 40px; }
+  #panel-edu { bottom: 100px; left: 40px; }
+  #panel-projects { top: 28px; left: 40px; margin-top: 60px; }
+
+  /* Speedometer */
+  #speedometer {
+    position: fixed;
+    bottom: 36px; right: 40px;
+    opacity: 0;
+    transition: opacity 1s ease 2s;
+    pointer-events: none;
+  }
+  .speed-circle {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,20,0.7);
+    backdrop-filter: blur(10px);
+  }
+  .speed-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .speed-unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* Area labels */
+  .area-label {
+    position: fixed;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.15);
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    user-select: none;
+  }
+
+  /* Mini map */
+  #minimap {
+    position: fixed;
+    bottom: 36px; left: 40px;
+    width: 90px; height: 90px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    background: rgba(10,10,20,0.7);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 1s ease 2s;
+    pointer-events: none;
+  }
+  #minimap canvas { width: 100%; height: 100%; }
+
+  /* Visible states */
+  .show { opacity: 1 !important; }
+
+  /* Scanline overlay */
+  #scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.03) 3px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.5;
+  }
+
+  /* Vignette */
+  #vignette {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 49;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- Loader -->
+<div id="loader">
+  <h1>BENJAMIN<br>VIJAYARAJ</h1>
+  <p>Loading world...</p>
+  <div class="loader-bar-wrap"><div id="loader-bar"></div></div>
+</div>
+
+<!-- UI -->
+<div id="ui">
+  <div id="header">
+    <span class="name">BV.DEV</span>
+    <div class="dot"></div>
+  </div>
+
+  <!-- Panels -->
+  <div class="info-panel" id="panel-about">
+    <h2>About Me</h2>
+    <div class="subtitle">AI Engineer · Builder · Explorer</div>
+    <p>Crafting intelligent systems at the intersection of AI and software engineering. Passionate about agentic AI, automation, and building tools that think.</p>
+    <a href="https://github.com/BenjaminVijayaraj5102004" target="_blank" class="link-btn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub Profile
+    </a>
+  </div>
+
+  <div class="info-panel" id="panel-skills">
+    <h2>Skills</h2>
+    <div class="subtitle">Tech Stack · Tools · Languages</div>
+    <div class="skill-tags">
+      <span class="tag tag-green">Python</span>
+      <span class="tag tag-green">Agentic AI</span>
+      <span class="tag tag-green">MCP</span>
+      <span class="tag tag-orange">n8n</span>
+      <span class="tag tag-orange">PostgreSQL</span>
+      <span class="tag tag-blue">Java</span>
+      <span class="tag tag-blue">Claude Code</span>
+      <span class="tag tag-orange">Codex</span>
+    </div>
+  </div>
+
+  <div class="info-panel" id="panel-edu">
+    <h2>Education</h2>
+    <div class="subtitle">Vellore Institute of Technology — AP</div>
+    <p>Pursuing B.Tech with a focus on intelligent systems and software engineering.</p>
+    <div class="skill-tags">
+      <span class="tag tag-green">CGPA: 7.77</span>
+      <span class="tag tag-blue">VIT-AP</span>
+    </div>
+  </div>
+
+  <div class="info-panel" id="panel-projects">
+    <h2>Projects</h2>
+    <div class="subtitle">Github · Open Source · Builds</div>
+    <p>Explore my builds — from AI agents to automation pipelines and full-stack applications.</p>
+    <a href="https://github.com/BenjaminVijayaraj5102004" target="_blank" class="link-btn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      View Projects
+    </a>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls-hint">
+    <div class="key">
+      <div class="key-btn">W</div>
+      <div class="key-label">Forward</div>
+    </div>
+    <div class="key">
+      <div class="key-arrow">
+        <div class="key-btn">A</div>
+        <div class="key-btn">D</div>
+      </div>
+      <div class="key-label">Steer</div>
+    </div>
+    <div class="key">
+      <div class="key-btn">S</div>
+      <div class="key-label">Brake</div>
+    </div>
+  </div>
+
+  <div id="speedometer">
+    <div class="speed-circle">
+      <div class="speed-num" id="speed-num">0</div>
+      <div class="speed-unit">KM/H</div>
+    </div>
+  </div>
+
+  <div id="minimap"><canvas id="minimap-canvas" width="90" height="90"></canvas></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// BENJAMIN VIJAYARAJ — 3D Portfolio
+// ============================================================
+
+const loader = document.getElementById('loader');
+const loaderBar = document.getElementById('loader-bar');
+const canvas = document.getElementById('canvas');
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+const speedNum = document.getElementById('speed-num');
+const minimapCanvas = document.getElementById('minimap-canvas');
+const mmCtx = minimapCanvas.getContext('2d');
+
+// Cursor
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top = mouseY + 'px';
+  setTimeout(() => {
+    cursorRing.style.left = mouseX + 'px';
+    cursorRing.style.top = mouseY + 'px';
+  }, 80);
+});
+
+// ── THREE.JS SETUP ──────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080810);
+scene.fog = new THREE.FogExp2(0x080810, 0.028);
+
+// Camera
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 6, 14);
+camera.lookAt(0, 0, 0);
+
+// ── LIGHTING ────────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x111122, 0.8);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0x8899ff, 1.2);
+sunLight.position.set(30, 50, 20);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 200;
+sunLight.shadow.camera.left = -80;
+sunLight.shadow.camera.right = 80;
+sunLight.shadow.camera.top = 80;
+sunLight.shadow.camera.bottom = -80;
+scene.add(sunLight);
+
+// Color point lights for atmosphere
+const lights = [
+  { color: 0x00ff88, pos: [20, 3, 0], intensity: 3, dist: 30 },
+  { color: 0xff6b35, pos: [-20, 3, -30], intensity: 3, dist: 30 },
+  { color: 0x6644ff, pos: [0, 3, -60], intensity: 2, dist: 30 },
+  { color: 0x00ffdd, pos: [-30, 3, -60], intensity: 2, dist: 25 },
+];
+const sceneLights = [];
+lights.forEach(l => {
+  const light = new THREE.PointLight(l.color, l.intensity, l.dist);
+  light.position.set(...l.pos);
+  scene.add(light);
+  sceneLights.push(light);
+});
+
+// ── GROUND ──────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(200, 200, 60, 60);
+// Subtle terrain
+const pos = groundGeo.attributes.position;
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i), z = pos.getY(i);
+  const dist = Math.sqrt(x*x + z*z);
+  if (dist > 10) {
+    pos.setZ(i, (Math.sin(x*0.15)*0.5 + Math.cos(z*0.12)*0.4) * Math.min((dist-10)*0.05, 1.5));
+  }
+}
+groundGeo.computeVertexNormals();
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x0d0d1a,
+  roughness: 0.95,
+  metalness: 0.05,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid lines on ground
+const gridHelper = new THREE.GridHelper(200, 60, 0x1a1a3a, 0x111128);
+gridHelper.position.y = 0.01;
+scene.add(gridHelper);
+
+// ── ROAD SYSTEM ─────────────────────────────────────────────
+function createRoad(points, width = 5) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const tubeGeo = new THREE.TubeGeometry(curve, 80, width/2, 4, false);
+  const roadMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a2e,
+    roughness: 0.9,
+    metalness: 0.1,
+  });
+  const road = new THREE.Mesh(tubeGeo, roadMat);
+  road.receiveShadow = true;
+  scene.add(road);
+
+  // Road markings
+  const markCurve = new THREE.CatmullRomCurve3(points);
+  for (let i = 0; i <= 1; i += 0.02) {
+    const pt = markCurve.getPoint(i);
+    const markGeo = new THREE.BoxGeometry(0.3, 0.02, 1.5);
+    const markMat = new THREE.MeshBasicMaterial({ color: 0x333355 });
+    const mark = new THREE.Mesh(markGeo, markMat);
+    mark.position.set(pt.x, 0.05, pt.z);
+    scene.add(mark);
+  }
+  return curve;
+}
+
+// Main road circuit
+const mainRoadPoints = [
+  new THREE.Vector3(0, 0, 8),
+  new THREE.Vector3(20, 0, 5),
+  new THREE.Vector3(28, 0, -10),
+  new THREE.Vector3(20, 0, -25),
+  new THREE.Vector3(0, 0, -35),
+  new THREE.Vector3(-20, 0, -45),
+  new THREE.Vector3(-30, 0, -30),
+  new THREE.Vector3(-25, 0, -10),
+  new THREE.Vector3(-15, 0, 5),
+  new THREE.Vector3(0, 0, 8),
+];
+const mainCurve = createRoad(mainRoadPoints, 5);
+
+// ── ISLANDS / ZONES ─────────────────────────────────────────
+function createIsland(x, z, r, color, label) {
+  const geo = new THREE.CylinderGeometry(r, r*1.2, 0.4, 32);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.2 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, -0.1, z);
+  mesh.receiveShadow = true;
+  mesh.castShadow = true;
+  scene.add(mesh);
+
+  // Ring
+  const ringGeo = new THREE.TorusGeometry(r+0.3, 0.08, 8, 64);
+  const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.5 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  ring.position.set(x, 0.25, z);
+  scene.add(ring);
+  return { mesh, ring, x, z, r, label };
+}
+
+const islands = [
+  createIsland(0, -10, 7, 0x00ff88, 'about'),       // Center - About
+  createIsland(22, -15, 5, 0xff6b35, 'projects'),    // Right - Projects
+  createIsland(-22, -20, 5, 0x6644ff, 'education'),  // Left - Education
+  createIsland(5, -38, 4, 0x00ddff, 'skills'),       // Bottom - Skills
+];
+
+// ── DECORATIVE STRUCTURES ───────────────────────────────────
+function createBuilding(x, z, w, d, h, color) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.7,
+    metalness: 0.3,
+    emissive: color,
+    emissiveIntensity: 0.05,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, h/2, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  // Window lights
+  for (let row = 0; row < Math.floor(h/2); row++) {
+    for (let col = 0; col < 3; col++) {
+      if (Math.random() > 0.4) {
+        const wGeo = new THREE.PlaneGeometry(0.4, 0.3);
+        const wMat = new THREE.MeshBasicMaterial({
+          color: 0xffffaa,
+          transparent: true,
+          opacity: 0.6 + Math.random()*0.4,
+        });
+        const win = new THREE.Mesh(wGeo, wMat);
+        win.position.set(x + (col-1)*1.2, row*2 + 1.5, z + d/2 + 0.01);
+        scene.add(win);
+      }
+    }
+  }
+}
+
+// Buildings around the scene
+const buildingData = [
+  [40, 10, 3, 4, 8, 0x1a2040], [42, 5, 2, 3, 12, 0x1a3040],
+  [38, -5, 4, 3, 6, 0x401a40], [-40, -5, 3, 4, 10, 0x1a4030],
+  [-38, 5, 2, 3, 14, 0x401a20], [-42, -15, 4, 3, 8, 0x204040],
+  [35, -40, 3, 3, 7, 0x402020], [-35, -50, 3, 4, 11, 0x202040],
+  [10, 20, 2, 2, 5, 0x303040], [-10, 22, 3, 2, 7, 0x302040],
+];
+buildingData.forEach(b => createBuilding(...b));
+
+// Trees (cone + cylinder)
+function createTree(x, z, h = 2.5) {
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, h*0.4, 6);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 1 });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.set(x, h*0.2, z);
+  scene.add(trunk);
+
+  const foliageGeo = new THREE.ConeGeometry(0.8 + Math.random()*0.4, h, 7);
+  const foliageMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color().setHSL(0.33, 0.5 + Math.random()*0.3, 0.1 + Math.random()*0.1),
+    roughness: 0.9,
+  });
+  const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+  foliage.position.set(x, h*0.6, z);
+  scene.add(foliage);
+}
+const treePositions = [
+  [12, 0], [-12, 0], [15, -5], [-15, -5],
+  [35, -20], [-35, -25], [30, -50], [-30, -55],
+  [5, 15], [-5, 15], [20, 20], [-20, 18],
+  [45, -35], [-45, -40], [8, -55], [-8, -55],
+];
+treePositions.forEach(([x, z]) => createTree(x + Math.random()*2-1, z + Math.random()*2-1));
+
+// ── FLOATING PARTICLES ──────────────────────────────────────
+const particleCount = 800;
+const particleGeo = new THREE.BufferGeometry();
+const particlePos = new Float32Array(particleCount * 3);
+const particleSpeeds = new Float32Array(particleCount);
+for (let i = 0; i < particleCount; i++) {
+  particlePos[i*3]   = (Math.random()-0.5)*120;
+  particlePos[i*3+1] = Math.random()*20;
+  particlePos[i*3+2] = (Math.random()-0.5)*120;
+  particleSpeeds[i]  = 0.002 + Math.random()*0.005;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+const particleMat = new THREE.PointsMaterial({
+  color: 0x4455ff, size: 0.12, transparent: true, opacity: 0.6, sizeAttenuation: true,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// ── CAR ─────────────────────────────────────────────────────
+const carGroup = new THREE.Group();
+scene.add(carGroup);
+
+// Body
+const bodyGeo = new THREE.BoxGeometry(2.2, 0.6, 4.5);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, roughness: 0.3, metalness: 0.8, emissive: 0x003322, emissiveIntensity: 0.2 });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.position.y = 0.5;
+body.castShadow = true;
+carGroup.add(body);
+
+// Cabin
+const cabinGeo = new THREE.BoxGeometry(1.8, 0.5, 2.2);
+const cabinMat = new THREE.MeshStandardMaterial({ color: 0x0a0a1a, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85 });
+const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+cabin.position.set(0, 1.0, -0.3);
+cabin.castShadow = true;
+carGroup.add(cabin);
+
+// Wheels
+function createWheel(x, z) {
+  const group = new THREE.Group();
+  const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 16);
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.9, metalness: 0.3 });
+  const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+  wheel.rotation.z = Math.PI/2;
+
+  // Rim
+  const rimGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.32, 8);
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.9, roughness: 0.2 });
+  const rim = new THREE.Mesh(rimGeo, rimMat);
+  rim.rotation.z = Math.PI/2;
+
+  group.add(wheel, rim);
+  group.position.set(x, 0.45, z);
+  return group;
+}
+const wheels = [
+  createWheel(1.2, 1.6), createWheel(-1.2, 1.6),
+  createWheel(1.2, -1.6), createWheel(-1.2, -1.6),
+];
+wheels.forEach(w => carGroup.add(w));
+
+// Headlights
+const headlightGeo = new THREE.SphereGeometry(0.18, 8, 8);
+const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+[-0.7, 0.7].forEach(x => {
+  const hl = new THREE.Mesh(headlightGeo, headlightMat);
+  hl.position.set(x, 0.5, 2.3);
+  carGroup.add(hl);
+  const light = new THREE.SpotLight(0xffffff, 3, 20, Math.PI/8, 0.3);
+  light.position.set(x, 0.5, 2.3);
+  light.target.position.set(x, 0, 20);
+  scene.add(light);
+  scene.add(light.target);
+});
+
+// Tail lights
+const taillightMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+[-0.7, 0.7].forEach(x => {
+  const tl = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), taillightMat);
+  tl.position.set(x, 0.5, -2.3);
+  carGroup.add(tl);
+});
+
+carGroup.position.set(0, 0, 8);
+
+// ── CAR PHYSICS ─────────────────────────────────────────────
+const car = {
+  pos: new THREE.Vector3(0, 0, 8),
+  angle: 0,
+  speed: 0,
+  steering: 0,
+  maxSpeed: 0.35,
+  maxSpeedReverse: 0.12,
+  acceleration: 0.012,
+  deceleration: 0.015,
+  friction: 0.008,
+  turnSpeed: 0.038,
+};
+
+const keys = {};
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// Mobile touch controls
+let touchForward = false, touchBack = false, touchLeft = false, touchRight = false;
+
+// ── ZONE DETECTION ──────────────────────────────────────────
+let activeZone = null;
+const panels = {
+  'about': document.getElementById('panel-about'),
+  'projects': document.getElementById('panel-projects'),
+  'education': document.getElementById('panel-edu'),
+  'skills': document.getElementById('panel-skills'),
+};
+
+function checkZones() {
+  let nearestZone = null;
+  let nearestDist = Infinity;
+  islands.forEach(island => {
+    const dx = car.pos.x - island.x;
+    const dz = car.pos.z - island.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    if (dist < island.r + 6 && dist < nearestDist) {
+      nearestDist = dist;
+      nearestZone = island.label;
+    }
+  });
+  if (nearestZone !== activeZone) {
+    if (activeZone && panels[activeZone]) panels[activeZone].classList.remove('visible');
+    activeZone = nearestZone;
+    if (activeZone && panels[activeZone]) panels[activeZone].classList.add('visible');
+  }
+}
+
+// ── MINIMAP ─────────────────────────────────────────────────
+function drawMinimap() {
+  const w = 90, h = 90;
+  mmCtx.clearRect(0, 0, w, h);
+  mmCtx.fillStyle = 'rgba(8,8,16,0.9)';
+  mmCtx.fillRect(0, 0, w, h);
+
+  const scale = 0.45, offX = w/2, offY = h/2 + 10;
+  const cx = car.pos.x * scale + offX;
+  const cz = car.pos.z * scale + offY;
+
+  // Islands on minimap
+  islands.forEach(island => {
+    const ix = island.x * scale + offX;
+    const iz = island.z * scale + offY;
+    mmCtx.beginPath();
+    mmCtx.arc(ix, iz, island.r * scale, 0, Math.PI*2);
+    const colors = { about: '#00ff88', projects: '#ff6b35', education: '#6644ff', skills: '#00ddff' };
+    mmCtx.fillStyle = colors[island.label] || '#ffffff';
+    mmCtx.globalAlpha = 0.4;
+    mmCtx.fill();
+    mmCtx.globalAlpha = 1;
+  });
+
+  // Car dot
+  mmCtx.save();
+  mmCtx.translate(cx, cz);
+  mmCtx.rotate(-car.angle);
+  mmCtx.fillStyle = '#00ff88';
+  mmCtx.beginPath();
+  mmCtx.moveTo(0, -5);
+  mmCtx.lineTo(-3, 3);
+  mmCtx.lineTo(3, 3);
+  mmCtx.closePath();
+  mmCtx.fill();
+  mmCtx.restore();
+}
+
+// ── CAMERA FOLLOW ───────────────────────────────────────────
+const camTarget = new THREE.Vector3();
+const camPos = new THREE.Vector3();
+
+// ── ANIMATION LOOP ──────────────────────────────────────────
+let time = 0;
+let loaded = false;
+
+function updateCar(delta) {
+  const forward = keys['KeyW'] || keys['ArrowUp'] || touchForward;
+  const backward = keys['KeyS'] || keys['ArrowDown'] || touchBack;
+  const left = keys['KeyA'] || keys['ArrowLeft'] || touchLeft;
+  const right = keys['KeyD'] || keys['ArrowRight'] || touchRight;
+
+  if (forward) {
+    car.speed = Math.min(car.speed + car.acceleration, car.maxSpeed);
+  } else if (backward) {
+    car.speed = Math.max(car.speed - car.acceleration, -car.maxSpeedReverse);
+  } else {
+    if (car.speed > 0) car.speed = Math.max(0, car.speed - car.friction);
+    if (car.speed < 0) car.speed = Math.min(0, car.speed + car.friction);
+  }
+
+  if (Math.abs(car.speed) > 0.01) {
+    const turnDir = car.speed > 0 ? 1 : -1;
+    if (left) car.angle += car.turnSpeed * Math.abs(car.speed) / car.maxSpeed * turnDir;
+    if (right) car.angle -= car.turnSpeed * Math.abs(car.speed) / car.maxSpeed * turnDir;
+  }
+
+  car.pos.x += Math.sin(car.angle) * car.speed;
+  car.pos.z += Math.cos(car.angle) * car.speed;
+
+  // Bounds
+  car.pos.x = Math.max(-60, Math.min(60, car.pos.x));
+  car.pos.z = Math.max(-70, Math.min(20, car.pos.z));
+
+  carGroup.position.copy(car.pos);
+  carGroup.rotation.y = car.angle;
+
+  // Wheel spin
+  const wheelSpin = car.speed * 0.8;
+  wheels.forEach(w => w.rotation.x += wheelSpin);
+
+  // Car bobbing
+  carGroup.position.y = Math.abs(car.speed) * 0.1 + Math.sin(time * 8) * Math.abs(car.speed) * 0.05;
+
+  // Speed display
+  speedNum.textContent = Math.round(Math.abs(car.speed) * 300);
+}
+
+function updateCamera() {
+  const camAngle = car.angle;
+  const camDist = 12 + Math.abs(car.speed) * 5;
+  const camHeight = 5 + Math.abs(car.speed) * 2;
+
+  camPos.set(
+    car.pos.x - Math.sin(camAngle) * camDist,
+    car.pos.y + camHeight,
+    car.pos.z - Math.cos(camAngle) * camDist
+  );
+  camTarget.set(car.pos.x, car.pos.y + 1, car.pos.z);
+
+  camera.position.lerp(camPos, 0.07);
+  camera.lookAt(camTarget);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+
+  if (!loaded) return;
+
+  updateCar();
+  updateCamera();
+  checkZones();
+
+  // Animate islands
+  islands.forEach((island, i) => {
+    island.ring.rotation.z = time * (0.5 + i*0.1);
+    island.ring.position.y = 0.25 + Math.sin(time + i) * 0.1;
+  });
+
+  // Animate particles
+  const pPos = particles.geometry.attributes.position;
+  for (let i = 0; i < particleCount; i++) {
+    pPos.array[i*3+1] += particleSpeeds[i];
+    if (pPos.array[i*3+1] > 20) pPos.array[i*3+1] = 0;
+  }
+  pPos.needsUpdate = true;
+
+  // Animate lights
+  sceneLights.forEach((l, i) => {
+    l.intensity = 2 + Math.sin(time * 1.5 + i * 1.2) * 0.8;
+  });
+
+  drawMinimap();
+  renderer.render(scene, camera);
+}
+
+// ── WINDOW RESIZE ────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── LOADER SIMULATION ────────────────────────────────────────
+let progress = 0;
+const loadInterval = setInterval(() => {
+  progress += Math.random() * 18;
+  if (progress >= 100) {
+    progress = 100;
+    clearInterval(loadInterval);
+    loaderBar.style.width = '100%';
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        document.getElementById('header').classList.add('show');
+        document.getElementById('controls-hint').classList.add('show');
+        document.getElementById('speedometer').classList.add('show');
+        document.getElementById('minimap').classList.add('show');
+        loaded = true;
+      }, 800);
+    }, 500);
+  }
+  loaderBar.style.width = progress + '%';
+}, 120);
+
+animate();
+</script>
+</body>
+</html>
